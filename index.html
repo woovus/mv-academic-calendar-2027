@@ -10,7 +10,10 @@ main{max-width:480px;margin:0 auto;padding:24px 16px 40px}
 h1{font-size:1.45rem;line-height:1.2;margin:0 0 6px}
 .sub{color:var(--mut);font-size:.95rem;margin:0 0 20px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
-.btn{display:block;width:100%;min-height:52px;padding:14px;border-radius:14px;background:var(--ac);color:#fff;text-align:center;text-decoration:none;font-weight:600;font-size:1.05rem;margin-top:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.seg button{min-height:46px;border:1.5px solid var(--line);background:transparent;color:var(--fg);border-radius:12px;font:inherit;font-size:.92rem;cursor:pointer}
+.seg button.on{border-color:var(--ac);background:var(--ac);color:#fff;font-weight:600}
+.btn{display:block;width:100%;min-height:52px;padding:14px;border-radius:14px;background:var(--ac);color:#fff;text-align:center;text-decoration:none;font-weight:600;font-size:1.05rem;margin-top:10px;border:0;font-family:inherit;cursor:pointer}
 .btn.alt{background:transparent;color:var(--ac);border:1.5px solid var(--ac)}
 .k{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
 .k:first-of-type{border-top:0}.k span{flex:1}.k small{display:block;color:var(--mut);font-size:.82rem}
@@ -21,21 +24,33 @@ details summary{min-height:44px;display:flex;align-items:center;font-weight:600;
 <h1>Maldives Academic Calendar 2027</h1>
 <p class="sub">Terms, exams, school breaks and public holidays. Updates itself when the Ministry changes dates. Tentative version: 1 Oct 2026.</p>
 <div class="card">
-<b id="dev">Add to your calendar</b>
+<b>1. Choose your calendar app</b>
+<div class="seg" id="seg"></div>
+<b style="display:block;margin-top:14px">2. Add</b>
 <a class="btn" id="main" href="#">Add all events</a>
-<a class="btn alt" id="dl" href="calendar.ics" download>Download file instead</a>
+<button class="btn alt" id="copy">Copy calendar link</button>
 <p class="note" id="hint"></p>
 </div>
 <div class="card"><details><summary>Add only some types</summary><div id="rows"></div></details></div>
+<p class="note">Work or school Outlook accounts may block outside calendars. If so, ask your IT team to allow it, or use the copy link in Outlook: Add calendar, then From Internet.</p>
 <script>
 const C=[["term","🟦 School Term","Term start/end, reporting days"],["break","🟩 School Break","Mid-breaks, term holidays"],["exam","🟥 Exam","Mocks, term exams"],["public","🟨 Public Holiday","Eid, Ramadan, national days"],["other","🟪 School Activity","PD days, transfers, camps"]];
-const ua=navigator.userAgent,android=/Android/i.test(ua),apple=/iPhone|iPad|Macintosh/i.test(ua);
-const base=new URL(".",location.href).href;
-const w=f=>(base+f+".ics").replace(/^https?:/,"webcal:");
-const g=f=>"https://calendar.google.com/calendar/r?cid="+encodeURIComponent(w(f));
-const add=f=>android?g(f):w(f);
-document.getElementById("dev").textContent=android?"Android detected":apple?"iPhone / Mac detected":"Add to your calendar";
-document.getElementById("hint").textContent=android?"Opens Google Calendar. If asked, choose the desktop site and tap Add. Or use the download button and open the file with Google Calendar (one-time copy, no auto-updates).":"Tap Subscribe when your calendar asks. If nothing happens, use the download button.";
-const m=document.getElementById("main");m.href=add("calendar");if(!android&&!apple)m.href=w("calendar");
-document.getElementById("rows").innerHTML=C.map(([f,t,d])=>`<div class="k"><span>${t}<small>${d}</small></span><a href="${add(f)}"${android?' target="_blank" rel="noopener"':''}>Add</a></div>`).join("");
+const A={apple:["iPhone / Mac","Tap Subscribe when Calendar asks."],google:["Google / Android","Opens Google Calendar. If asked, choose the desktop site, then Add. It can take a few hours to appear."],olive:["Outlook (personal)","Opens Outlook.com. Sign in and choose Import / Add."],owork:["Outlook (work)","Opens Outlook on the web with your work account. Desktop app: use Copy link, then Add calendar, From Internet."]};
+const names={calendar:"Maldives Academic Calendar 2027",term:"MV School Term 2027",break:"MV School Break 2027",exam:"MV Exam 2027",public:"MV Public Holiday 2027",other:"MV School Activity 2027"};
+const base=new URL(".",location.href).href,e=encodeURIComponent;
+const https=f=>base+f+".ics",web=f=>https(f).replace(/^https?:/,"webcal:");
+const L={apple:f=>web(f),google:f=>"https://calendar.google.com/calendar/r?cid="+e(web(f)),
+olive:f=>"https://outlook.live.com/calendar/0/addfromweb?url="+e(https(f))+"&name="+e(names[f]),
+owork:f=>"https://outlook.office.com/calendar/0/addfromweb?url="+e(https(f))+"&name="+e(names[f])};
+const ua=navigator.userAgent;let cur=/Android/i.test(ua)?"google":/iPhone|iPad|Macintosh/i.test(ua)?"apple":/Windows/i.test(ua)?"owork":"apple";
+function draw(){
+document.getElementById("seg").innerHTML=Object.keys(A).map(k=>`<button class="${k==cur?"on":""}" data-k="${k}">${A[k][0]}</button>`).join("");
+const m=document.getElementById("main");m.href=L[cur]("calendar");
+if(cur!="apple"){m.target="_blank";m.rel="noopener"}else m.removeAttribute("target");
+document.getElementById("hint").textContent=A[cur][1];
+document.getElementById("rows").innerHTML=C.map(([f,t,d])=>`<div class="k"><span>${t}<small>${d}</small></span><a href="${L[cur](f)}"${cur!="apple"?' target="_blank" rel="noopener"':""}>Add</a></div>`).join("");
+document.querySelectorAll("#seg button").forEach(b=>b.onclick=()=>{cur=b.dataset.k;draw()})}
+document.getElementById("copy").onclick=async function(){const u=https("calendar");
+try{await navigator.clipboard.writeText(u);this.textContent="Copied. Paste into your calendar app"}catch(x){prompt("Copy this link:",u)}};
+draw();
 </script></main></body></html>
